@@ -1,0 +1,19 @@
+stages:
+  prepare:
+    cmd: python src/prepare.py --input data/raw/train.csv --output_dir data/prepared
+    deps:
+      - data/raw/train.csv
+      - src/prepare.py
+    outs:
+      - data/prepared
+
+  train:
+    cmd: python src/train.py --data_dir data/prepared --model_dir data/models
+    deps:
+      - data/prepared
+      - src/train.py
+    outs:
+      - data/models
+    metrics:
+      - artifacts/metrics.json:
+          cache: false

@@ -1,6 +1,16 @@
+"""
+Stage 2 — Train a Cyberbullying Detection model on prepared data.
+
+Reads prepared train/test CSVs (output of prepare.py),
+builds TF-IDF + numeric features, trains a RandomForest,
+evaluates, and logs everything to MLflow.
+"""
+
 import argparse
 import os
 import re
+import json
+
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -8,9 +18,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import cross_val_score
 from sklearn.metrics import (
     accuracy_score, f1_score, precision_score, recall_score,
     roc_auc_score, confusion_matrix, ConfusionMatrixDisplay,
@@ -20,84 +30,34 @@ from scipy.sparse import hstack, csr_matrix
 
 import mlflow
 import mlflow.sklearn
-
-import nltk
-from nltk.sentiment import SentimentIntensityAnalyzer
+import joblib
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def setup_nltk():
-    """Download NLTK data with SSL workaround."""
-    import ssl
-    try:
-        _create_unverified_https_context = ssl._create_unverified_context
-    except AttributeError:
-        pass
-    else:
-        ssl._create_default_https_context = _create_unverified_https_context
-    nltk.download("vader_lexicon", quiet=True)
-
-
-def clean_tweet(text: str) -> str:
-    """Basic tweet cleaning for TF-IDF."""
-    text = str(text).lower()
-    text = re.sub(r"http\S+|www\S+", "", text)           # URLs
-    text = re.sub(r"@\w+", "", text)                      # mentions
-    text = re.sub(r"#(\w+)", r"\1", text)                 # keep hashtag text
-    text = re.sub(r"[^a-zA-Z\s]", "", text)               # non-alpha
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
-def count_symbols(text: str):
-    hashtag_count = len(re.findall(r"#", str(text)))
-    mention_count = len(re.findall(r"@", str(text)))
-    return hashtag_count, mention_count
-
-
 ARTIFACTS_DIR = "artifacts"
+NUMERIC_FEATURES = ["num_hashtags", "num_mentions", "tweet_len", "sentiment_score"]
 
 
-# ---------------------------------------------------------------------------
-# Data pipeline
-# ---------------------------------------------------------------------------
+def build_features(df: pd.DataFrame, tfidf: TfidfVectorizer = None,
+                   tfidf_max_features: int = 5000, fit: bool = False):
+    """Build sparse feature matrix from a prepared DataFrame."""
+    X_numeric = csr_matrix(df[NUMERIC_FEATURES].values)
 
-def load_and_preprocess(data_path: str, tfidf_max_features: int = 5000):
-    """Load CSV, engineer features, return X (sparse), y, feature_names."""
-    df = pd.read_csv(data_path)
-    df = df.dropna(subset=["tweet"])
+    # Ensure no NaN in text column
+    tweets = df["tweet_clean"].fillna("")
 
-    setup_nltk()
+    if fit:
+        tfidf = TfidfVectorizer(max_features=tfidf_max_features, stop_words="english")
+        X_tfidf = tfidf.fit_transform(tweets)
+    else:
+        X_tfidf = tfidf.transform(tweets)
 
-    # --- numeric features ---
-    df[["num_hashtags", "num_mentions"]] = df["tweet"].apply(
-        lambda x: pd.Series(count_symbols(x))
-    )
-    df["tweet_len"] = df["tweet"].apply(lambda x: len(str(x)))
-
-    sia = SentimentIntensityAnalyzer()
-    df["sentiment_score"] = df["tweet"].apply(
-        lambda x: sia.polarity_scores(str(x))["compound"]
-    )
-
-    numeric_features = ["num_hashtags", "num_mentions", "tweet_len", "sentiment_score"]
-    X_numeric = csr_matrix(df[numeric_features].values)
-
-    # --- TF-IDF features ---
-    df["tweet_clean"] = df["tweet"].apply(clean_tweet)
-    tfidf = TfidfVectorizer(max_features=tfidf_max_features, stop_words="english")
-    X_tfidf = tfidf.fit_transform(df["tweet_clean"])
-
-    # --- combine ---
     X = hstack([X_numeric, X_tfidf])
-    y = df["label"]
-
-    feature_names = numeric_features + [f"tfidf_{w}" for w in tfidf.get_feature_names_out()]
-
-    return X, y, feature_names, tfidf
+    feature_names = NUMERIC_FEATURES + [f"tfidf_{w}" for w in tfidf.get_feature_names_out()]
+    return X, feature_names, tfidf
 
 
 # ---------------------------------------------------------------------------
@@ -105,20 +65,29 @@ def load_and_preprocess(data_path: str, tfidf_max_features: int = 5000):
 # ---------------------------------------------------------------------------
 
 def train(args):
-    # 1. Load data
-    data_path = "data/raw/train.csv"
-    if not os.path.exists(data_path):
-        print(f"Error: {data_path} not found.")
-        return
+    # 1. Load prepared data
+    train_path = os.path.join(args.data_dir, "train.csv")
+    test_path = os.path.join(args.data_dir, "test.csv")
+    for p in [train_path, test_path]:
+        if not os.path.exists(p):
+            print(f"Error: {p} not found. Run the prepare stage first.")
+            return
+
+    df_train = pd.read_csv(train_path)
+    df_test = pd.read_csv(test_path)
+    print(f"Train: {len(df_train)}  |  Test: {len(df_test)}")
 
     os.makedirs(ARTIFACTS_DIR, exist_ok=True)
+    os.makedirs(args.model_dir, exist_ok=True)
 
-    X, y, feature_names, tfidf = load_and_preprocess(data_path, args.tfidf_features)
-
-    # 2. Split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=args.random_state, stratify=y
+    # 2. Build features (fit TF-IDF on train, transform test)
+    X_train, feature_names, tfidf = build_features(
+        df_train, tfidf_max_features=args.tfidf_features, fit=True
     )
+    X_test, _, _ = build_features(df_test, tfidf=tfidf)
+
+    y_train = df_train["label"]
+    y_test = df_test["label"]
 
     # 3. Handle imbalance with SMOTE (optional)
     if args.smote:
@@ -186,7 +155,17 @@ def train(args):
         # 8. Log model
         mlflow.sklearn.log_model(model, "model")
 
-        # 9. Artifacts ---------------------------------------------------------
+        # 9. Save model locally (DVC-tracked output)
+        model_path = os.path.join(args.model_dir, "model.joblib")
+        joblib.dump(model, model_path)
+        print(f"Model saved to {model_path}")
+
+        # 10. Save metrics JSON (DVC metrics file)
+        metrics_path = os.path.join(ARTIFACTS_DIR, "metrics.json")
+        with open(metrics_path, "w") as f:
+            json.dump(metrics, f, indent=2)
+
+        # 11. Artifacts --------------------------------------------------------
 
         # Classification report (text)
         report = classification_report(y_test, y_pred, target_names=["Not Hate", "Hate"])
@@ -237,6 +216,10 @@ def train(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Cyberbullying Detection Model")
+    parser.add_argument("--data_dir", type=str, default="data/prepared",
+                        help="Directory with prepared train.csv / test.csv")
+    parser.add_argument("--model_dir", type=str, default="data/models",
+                        help="Directory to save the trained model")
     parser.add_argument("--n_estimators", type=int, default=100, help="Number of trees")
     parser.add_argument("--max_depth", type=int, default=10, help="Max depth (0 = None)")
     parser.add_argument("--random_state", type=int, default=42, help="Random state")
