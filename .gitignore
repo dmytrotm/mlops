@@ -2,8 +2,12 @@ __pycache__/
 *.py[cod]
 venv/
 .env
+lab.md
 
-data/
+# Ignore data files but allow DVC tracking files
+data/**
+!data/**/.gitignore
+!data/**/*.dvc
 models/
 
 .ipynb_checkpoints
