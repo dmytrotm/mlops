@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 USER airflow
 COPY requirements.txt /tmp/requirements.txt
-# Встановлюємо Python пакети локально (в ~/.local)
-RUN pip install --user --no-cache-dir -r /tmp/requirements.txt
+# Встановлюємо Python пакети (базовий образ Airflow вже налаштований)
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 
 # Stage 2: Final
@@ -29,4 +29,4 @@ ENV PATH=/home/airflow/.local/bin:$PATH
 WORKDIR /opt/airflow
 
 # Вказуємо змінні середовища
-ENV PYTHONPATH="/opt/airflow/src:${PYTHONPATH}"
+ENV PYTHONPATH="/opt/airflow/src"
