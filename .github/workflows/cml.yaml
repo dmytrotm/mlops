@@ -80,7 +80,7 @@ jobs:
         run: |
           pytest tests/test_airflow_dags.py -v --tb=short
         env:
-          AIRFLOW_HOME: "dags"
+          AIRFLOW_HOME: ${{ github.workspace }}/dags
 
   docker-build-test:
     runs-on: ubuntu-latest
