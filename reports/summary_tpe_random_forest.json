@@ -1,0 +1,21 @@
+{
+  "sampler": "tpe",
+  "model_type": "random_forest",
+  "n_trials": 10,
+  "metric": "f1",
+  "best_trial_number": 8,
+  "best_value": 0.524300441826215,
+  "final_value": 0.524300441826215,
+  "best_params": {
+    "n_estimators": 212,
+    "max_depth": 19,
+    "min_samples_split": 3,
+    "min_samples_leaf": 7,
+    "max_features": "log2",
+    "criterion": "gini"
+  },
+  "seed": 42,
+  "git_commit": "c08acf8",
+  "use_smote": true,
+  "tfidf_max_features": 5000
+}

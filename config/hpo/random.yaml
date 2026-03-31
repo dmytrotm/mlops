@@ -1,0 +1,4 @@
+# @package _global_
+hpo:
+  sampler: "random"
+  n_trials: 20

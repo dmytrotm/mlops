@@ -1,11 +1,3 @@
-"""
-Stage 2 — Train a Cyberbullying Detection model on prepared data.
-
-Reads prepared train/test CSVs (output of prepare.py),
-builds TF-IDF + numeric features, trains a RandomForest,
-evaluates, and logs everything to MLflow.
-"""
-
 import argparse
 import os
 import re

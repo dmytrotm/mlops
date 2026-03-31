@@ -1,0 +1,21 @@
+{
+  "sampler": "random",
+  "model_type": "random_forest",
+  "n_trials": 50,
+  "metric": "f1",
+  "best_trial_number": 15,
+  "best_value": 0.5400981996726678,
+  "final_value": 0.5400981996726678,
+  "best_params": {
+    "n_estimators": 423,
+    "max_depth": 28,
+    "min_samples_split": 6,
+    "min_samples_leaf": 1,
+    "max_features": "log2",
+    "criterion": "entropy"
+  },
+  "seed": 42,
+  "git_commit": "c08acf8",
+  "use_smote": true,
+  "tfidf_max_features": 5000
+}

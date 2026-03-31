@@ -8,7 +8,7 @@ stages:
       - data/prepared
 
   train:
-    cmd: python src/train.py --data_dir data/prepared --model_dir data/models
+    cmd: python src/train.py --data_dir data/prepared --model_dir data/models --smote --max_depth 20 --n_estimators 200
     deps:
       - data/prepared
       - src/train.py
@@ -16,4 +16,17 @@ stages:
       - data/models
     metrics:
       - artifacts/metrics.json:
+          cache: false
+
+  optimize:
+    cmd: python src/optimize.py
+    deps:
+      - data/prepared/train.csv
+      - src/optimize.py
+      - config/config.yaml
+    outs:
+      - models/best_model.pkl:
+          cache: false
+    metrics:
+      - reports/summary_tpe_random_forest.json:
           cache: false

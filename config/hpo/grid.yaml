@@ -1,0 +1,4 @@
+# @package _global_
+hpo:
+  sampler: "grid"
+  n_trials: 81  # 3x3x3x3 для random_forest

@@ -2,7 +2,7 @@ __pycache__/
 *.py[cod]
 venv/
 .env
-lab.md
+lab*.md
 
 # Ignore data files but allow DVC tracking files
 data/**
@@ -16,5 +16,23 @@ mlflow.db
 artifacts/
 
 .vscode/
+.idea/
 .trash/
 .DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# Baseline data
+baseline/
+
+# Airflow generated files (if run locally)
+logs/
+airflow.cfg
+webserver_config.py
+airflow.db

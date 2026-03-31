@@ -8,3 +8,12 @@ jupyter
 nltk
 wordcloud
 imbalanced-learn
+optuna
+hydra-core
+omegaconf
+pytest
+flake8
+black
+pathspec<1.0.0
+joblib
+apache-airflow==2.9.2

@@ -1,0 +1,70 @@
+seed: 42
+
+mlflow:
+  tracking_uri: "sqlite:///mlflow.db"
+  experiment_name: "HPO_Lab3"
+  log_model: true
+  register_model: false
+  model_name: "BestOptimizedModel"
+  stage: "Staging"
+
+data:
+  processed_path: "data/prepared/train.csv"
+  label_col: "label"
+  text_col: "tweet_clean"
+  numeric_features:
+    - "num_hashtags"
+    - "num_mentions"
+    - "tweet_len"
+    - "sentiment_score"
+  tfidf_max_features: 5000
+  tfidf_ngram_max: 2
+  test_size: 0.2
+  use_smote: true
+
+model:
+  type: "random_forest"  # random_forest | logistic_regression | gradient_boosting
+
+hpo:
+  n_trials: 50
+  sampler: "tpe"         # tpe | random | grid
+  metric: "f1"           # f1 | roc_auc
+  direction: "maximize"
+  use_cv: false
+  cv_folds: 5
+
+  random_forest:
+    n_estimators: {low: 100, high: 500}
+    max_depth: {low: 5, high: 30}
+    min_samples_split: {low: 2, high: 15}
+    min_samples_leaf: {low: 1, high: 8}
+    max_features: ["sqrt", "log2"]
+    criterion: ["gini", "entropy"]
+
+  logistic_regression:
+    C: {low: 1.0e-3, high: 1.0e2}
+    solver: ["liblinear", "lbfgs"]
+    penalty: ["l2"]
+
+  gradient_boosting:
+    n_estimators: {low: 50, high: 300}
+    max_depth: {low: 3, high: 10}
+    learning_rate: {low: 0.01, high: 0.3}
+    subsample: {low: 0.6, high: 1.0}
+    min_samples_split: {low: 2, high: 10}
+
+  grid:
+    random_forest:
+      n_estimators: [100, 200, 300]
+      max_depth: [10, 15, 20]
+      min_samples_split: [2, 5, 10]
+      min_samples_leaf: [1, 2, 4]
+    logistic_regression:
+      C: [0.01, 0.1, 1.0, 10.0]
+      solver: ["liblinear"]
+      penalty: ["l2"]
+
+hydra:
+  run:
+    dir: "."
+  output_subdir: null
