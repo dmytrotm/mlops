@@ -2,7 +2,7 @@ __pycache__/
 *.py[cod]
 venv/
 .env
-lab*.md
+# lab*.md
 
 # Ignore data files but allow DVC tracking files
 data/**
