@@ -12,10 +12,8 @@ def test_dag_import():
     """
     Перевіряє, чи DAG файл(и) завантажуються без помилок імпорту та синтаксису.
     """
-    dag_folder = os.getenv("AIRFLOW_HOME", "dags/")
-    if not os.path.exists(dag_folder):
-        # Якщо тестуємо локально без встановленого Airflow і папка dags на рівень вище
-        dag_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dags'))
+    # Явно вказуємо шлях до папки dags, не прив'язуючись до AIRFLOW_HOME
+    dag_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dags'))
 
     dag_bag = DagBag(dag_folder=dag_folder, include_examples=False)
 
